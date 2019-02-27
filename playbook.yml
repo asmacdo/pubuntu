@@ -1,0 +1,22 @@
+---
+- hosts: all
+  vars:
+    pulp_default_admin_password: password
+    pulp_secret_key: secret
+    pulp_source_dir: '/home/vagrant/devel/pulp'
+    pulp_plugin_source_dir: "/home/vagrant/devel/pulpcore-plugin"
+    pulp_install_plugins:
+      pulp-file:
+        app_label: "file"
+        source_dir: "/home/vagrant/devel/pulp_file"
+    ansible_python_interpreter: /usr/bin/python3
+    pulp_user: "vagrant"
+    developer_user: "vagrant"
+    developer_user_home: "/home/vagrant"
+
+  roles:
+    - ansible-pulp3/roles/pulp3-postgresql
+    - ansible-pulp3/roles/pulp3-workers
+    - ansible-pulp3/roles/pulp3-resource-manager
+    - ansible-pulp3/roles/pulp3-webserver
+    - ansible-pulp3/roles/pulp3-content

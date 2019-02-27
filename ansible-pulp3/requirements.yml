@@ -1,0 +1,4 @@
+---
+- src: https://github.com/dralley/ansible-role-postgresql
+  version: master
+  name: geerlingguy.postgresql

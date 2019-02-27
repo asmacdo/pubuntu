@@ -1,6 +1,15 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+VAGRANT_SYNCED_FOLDERS = {
+  # This code
+  '.' => '/vagrant',
+
+  # For access to sibling repos (e.g. pulp_rpm, pulp_docker, ...)
+  '..' => '/home/vagrant/devel',
+}
+
+
 # All Vagrant configuration is done below. The "2" in Vagrant.configure
 # configures the configuration version (we support older styles for
 # backwards compatibility). Please don't change it unless you know what
@@ -12,7 +21,7 @@ Vagrant.configure("2") do |config|
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://vagrantcloud.com/search.
-  config.vm.box = "generic/ubuntu1604"
+  config.vm.box = "generic/ubuntu1804"
   # Comment out if you don't want Vagrant to add and remove entries from /etc/hosts for each VM.
   # requires the vagrant-hostmanager plugin to be installed
   if Vagrant.has_plugin?("vagrant-hostmanager")
@@ -20,18 +29,29 @@ Vagrant.configure("2") do |config|
       config.hostmanager.manage_host = true
   end
   #
-  # config.vm.provision "ansible" do |ansible|
-  #     ansible.playbook = "ansible/pulp-from-source.yml"
+  config.vm.provision "ansible" do |ansible|
+        ansible.playbook = "playbook.yml"
+        ansible.galaxy_role_file = 'requirements.yml'
   #     # ansible.verbose = "vvv"
   #     # ansible.start_at_task = "ansible task name here"
   #     # ansible.extra_vars = { use_rabbitmq: false }
-  #     ansible.extra_vars = { development: true }
-  # end
-  #
+  end
+
   # Create the "pulp3_dev" box
   config.vm.define :pulp3_dev do |pulp3_dev|
     pulp3_dev.vm.host_name = "pubuntu"
+
+    VAGRANT_SYNCED_FOLDERS.each do |host_path, guest_path|
+        # Use SSHFS instead of NFS. Requires the vagrant-sshfs plugin to be installed.
+        # Use SSHFS to share directories. The ``-o nonempty`` option is passed to allow
+        # mounts on non-empty directories.
+        pulp3_dev.vm.synced_folder host_path, guest_path, type: "sshfs"
+
+        # Comment this out if you use a different filesystem (like sshfs)
+        # pulp3_dev.vm.synced_folder host_path, guest_path, type: "nfs", nfs_version: 4, nfs_udp: false
+    end
   end
+
 
   # Disable automatic box update checking. If you disable this, then
   # boxes will only be checked for updates when the user runs

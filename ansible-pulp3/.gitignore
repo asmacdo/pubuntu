@@ -1,0 +1,8 @@
+/*.retry
+.tox
+**/*.pyc
+/roles/geerlingguy.postgresql
+
+# Ignores for Vagrant related items
+.vagrant/
+Vagrantfile

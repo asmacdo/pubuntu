@@ -1,0 +1,6 @@
+---
+- import_tasks: nginx.yml
+  when: pulp_webserver_server == 'nginx'
+
+- import_tasks: apache.yml
+  when: pulp_webserver_server == 'apache'

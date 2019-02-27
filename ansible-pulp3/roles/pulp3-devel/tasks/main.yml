@@ -1,0 +1,153 @@
+---
+- block:
+
+    - name: Install several useful packages (distro-agnostic)
+      package:
+        name:
+          - dstat
+          - git
+          - htop
+          - httpie
+          - iotop
+          - jnettop
+          - jq
+          - ncdu
+          - tmux
+          - tree
+          - wget
+        state: present
+      retries: "{{ pulp_devel_package_retries }}"
+      register: result
+      until: result is succeeded
+
+  become: true
+
+- block:
+
+    - name: Install several useful packages (Fedora-specific)
+      package:
+        name:
+          - bash-completion
+          - dnf-utils
+          - fd-find
+          - fzf
+          - python-django-bash-completion
+          - python3-setuptools
+          - python3-virtualenvwrapper
+          - ripgrep
+          - vim-enhanced
+        state: present
+      retries: "{{ pulp_devel_package_retries }}"
+      register: result
+      until: result is succeeded
+      when: ansible_distribution == 'Fedora'
+
+  become: true
+
+- block:
+
+    - name: Install requirements for building docs
+      pip:
+        requirements: '{{ pulp_source_dir }}/doc_requirements.txt'
+        state: present
+        virtualenv: '{{ pulp_install_dir }}'
+        virtualenv_command: '{{ pulp_python_interpreter }} -m venv'
+
+    - name: Install requirements for testing locally
+      pip:
+        requirements: '{{ pulp_source_dir }}/test_requirements.txt'
+        state: present
+        virtualenv: '{{ pulp_install_dir }}'
+        virtualenv_command: '{{ pulp_python_interpreter }} -m venv'
+
+    - name: Install requirements for developer scripts
+      pip:
+        requirements: '{{ pulp_source_dir }}/dev_requirements.txt'
+        state: present
+        virtualenv: '{{ pulp_install_dir }}'
+        virtualenv_command: '{{ pulp_python_interpreter }} -m venv'
+
+      retries: "{{ pulp_devel_package_retries }}"
+      register: result
+      until: result is succeeded
+      notify: Collect static content
+
+  become: true
+  become_user: '{{ pulp_user }}'
+
+- block:
+
+    - name: Create ~/.bashrc.d/
+      file:
+        path: "{{ developer_user_home }}/.bashrc.d/"
+        state: directory
+
+    - name: Define developer aliases in ~/.bashrc.d/
+      template:
+        src: templates/alias.bashrc.j2
+        dest: "{{ developer_user_home }}/.bashrc.d/alias.bashrc"
+
+    - name: Source developer aliases in ~/.bashrc.d/
+      blockinfile:
+        path: "{{ developer_user_home }}/.bashrc"
+        block: |
+          if [ -d ~/.bashrc.d ]; then
+            for file in ~/.bashrc.d/*; do
+              . "$file"
+            done
+          fi
+        marker: "# {mark} Ansible managed block: source bashrc.d/"
+        create: yes
+
+    - name: Add Django supplemental bashrc
+      copy:
+        src: files/django.bashrc
+        dest: '{{ developer_user_home }}/.bashrc.d/django.bashrc'
+      when: pulp_devel_supplement_bashrc
+
+    - name: Add virtualenv supplemental bashrc
+      template:
+        src: templates/venv.bashrc.j2
+        dest: '{{ developer_user_home }}/.bashrc.d/venv.bashrc'
+
+  become: true
+  become_user: "{{ developer_user }}"
+  when: pulp_devel_supplement_bashrc
+
+- block:
+
+    - name: Create ~/.vimrc if not already present
+      copy:
+        src: files/vimrc
+        dest: "{{ developer_user_home }}/.vimrc"
+        force: no
+
+    - name: Create ~/.netrc if not already present
+      template:
+        src: templates/netrc.j2
+        dest: "{{ developer_user_home }}/.netrc"
+        force: yes
+        mode: 0600
+
+    - name: Create pulp-smash config directory if not already present
+      file:
+        path: "{{ developer_user_home }}/.config/pulp_smash/"
+        state: directory
+        recurse: yes
+
+    - name: Create pulp-smash config if not already present
+      copy:
+        src: files/settings.json
+        dest: "{{ developer_user_home }}/.config/pulp_smash/settings.json"
+
+  become: true
+  become_user: "{{ developer_user }}"
+
+- block:
+
+    - name: Set the message of the day
+      copy:
+        src: motd
+        dest: /etc/motd
+
+  become: true
